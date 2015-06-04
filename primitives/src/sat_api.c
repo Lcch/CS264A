@@ -17,43 +17,28 @@
 
 //returns a variable structure for the corresponding index
 Var* sat_index2var(c2dSize index, const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return NULL;
 }
 
 //returns the index of a variable
 c2dSize sat_var_index(const Var* var) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return 0;
 }
 
 //returns the variable of a literal
 Var* sat_literal_var(const Lit* lit) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return NULL;
 }
 
 //returns 1 if the variable is instantiated, 0 otherwise
 //a variable is instantiated either by decision or implication (by unit resolution)
 BOOLEAN sat_instantiated_var(const Var* var) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return 0;
 }
 
 //returns 1 if all the clauses mentioning the variable are subsumed, 0 otherwise
 BOOLEAN sat_irrelevant_var(const Var* var) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return 0;
 }
 
 //returns the number of variables in the cnf of sat state
@@ -67,10 +52,7 @@ c2dSize sat_var_count(const SatState* sat_state) {
 //returns the number of clauses mentioning a variable
 //a variable is mentioned by a clause if one of its literals appears in the clause
 c2dSize sat_var_occurences(const Var* var) {
-
-  // ... TO DO ..
-  
-  return 0; //dummy valued
+  return 0;
 }
 
 //returns the index^th clause that mentions a variable
@@ -97,10 +79,7 @@ Lit* sat_index2literal(c2dLiteral index, const SatState* sat_state) {
 
 //returns the index of a literal
 c2dLiteral sat_literal_index(const Lit* lit) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return 0;
 }
 
 //returns the positive literal of a variable
@@ -246,15 +225,18 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name) {
 
-  // ... TO DO ...
-  
+  // FILE *file = fopen(file_name, "r")
+
+  // SatState* state = malloc(sizeof(SatState));
+
+  // fclose(file);
+  printf("gcc test.c -std=c99 -O2 -Wall -Iinclude -Llib -lsat -o test\n");
+
   return NULL; //dummy valued
 }
 
 //frees the SatState
 void sat_state_free(SatState* sat_state) {
-
-  // ... TO DO ...
   
   return; //dummy valued
 }

@@ -51,13 +51,10 @@ typedef double c2dWmc;          //for (weighted) model count
  ******************************************************************************/
 
 typedef struct var {
-
-  // ... TO DO ...
-
   //c2dSize index; variable index (you can change the variable name as you wish)
-  
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+  c2dSize index;
 
+  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 } Var;
 
 /******************************************************************************
@@ -69,11 +66,11 @@ typedef struct var {
  ******************************************************************************/
 
 typedef struct literal {
-
-  // ... TO DO ...
-  
   //c2dLiteral index; literal index (you can change the variable name as you wish)
+  c2dLiteral index;
+  c2dLiteral decision_level;
 
+  Var* var;
 } Lit;
 
 /******************************************************************************
@@ -87,12 +84,15 @@ typedef struct literal {
  ******************************************************************************/
 
 typedef struct clause {
-
-  // ... TO DO ...
-  
   //c2dSize index;  clause index   (you can change the variable name as you wish)
+  c2dSize index;
+
   //Lit** literals; literal array  (you can change the variable name as you wish)
-  
+  Lit** literals;
+
+  // size of literals
+  c2dSize size;
+
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
 } Clause;
@@ -104,8 +104,10 @@ typedef struct clause {
  ******************************************************************************/
 
 typedef struct sat_state_t {
+  c2dSize num_vars;
+  c2dSize num_clauses;
 
-  // ... TO DO ...
+  c2dSize cur_level;
 
 } SatState;
 
