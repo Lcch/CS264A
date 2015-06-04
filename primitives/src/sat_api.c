@@ -15,87 +15,93 @@
  * Variables
  ******************************************************************************/
 
+Var* new_variable(c2dSize index) {
+  Var* new_v = malloc(sizeof(Var));
+  new_v->index = index;
+  return new_v;
+}
+
 //returns a variable structure for the corresponding index
 Var* sat_index2var(c2dSize index, const SatState* sat_state) {
-  return NULL;
+  return sat_state->variables[index];
 }
 
 //returns the index of a variable
 c2dSize sat_var_index(const Var* var) {
-  return 0;
+  return var->index;
 }
 
 //returns the variable of a literal
 Var* sat_literal_var(const Lit* lit) {
-  return NULL;
+  return lit->var;
 }
 
 //returns 1 if the variable is instantiated, 0 otherwise
 //a variable is instantiated either by decision or implication (by unit resolution)
 BOOLEAN sat_instantiated_var(const Var* var) {
-  return 0;
+  return sat_implied_literal(var->p_literal) | sat_implied_literal(var->n_literal);
 }
 
 //returns 1 if all the clauses mentioning the variable are subsumed, 0 otherwise
 BOOLEAN sat_irrelevant_var(const Var* var) {
-  return 0;
+  for (c2dSize i = 0; i < var->num_clauses; i++) {
+    if (!sat_subsumed_clause(var->clauses[i]))
+      return 0;
+  }
+  return 1;
 }
 
 //returns the number of variables in the cnf of sat state
 c2dSize sat_var_count(const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return sat_state->num_vars;
 }
 
 //returns the number of clauses mentioning a variable
 //a variable is mentioned by a clause if one of its literals appears in the clause
 c2dSize sat_var_occurences(const Var* var) {
-  return 0;
+  return var->num_clauses;
 }
 
 //returns the index^th clause that mentions a variable
 //index starts from 0, and is less than the number of clauses mentioning the variable
 //this cannot be called on a variable that is not mentioned by any clause
 Clause* sat_clause_of_var(c2dSize index, const Var* var) {
-
-  // ... TO DO ..
-  
-  return NULL; //dummy valued
+  return var->clauses[index];
 }
 
 /******************************************************************************
  * Literals 
  ******************************************************************************/
 
+Lit* new_literal(c2dLiteral index, Var* var) {
+  Lit* new_lit= malloc(sizeof(Lit));
+  new_lit->index = index;
+  new_lit->var = var;
+  return new_lit;
+}
+
 //returns a literal structure for the corresponding index
 Lit* sat_index2literal(c2dLiteral index, const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  if (index > 0) {
+    return sat_state->p_literals[index];
+  } else {
+    return sat_state->n_literals[-index];
+  }
 }
 
 //returns the index of a literal
 c2dLiteral sat_literal_index(const Lit* lit) {
-  return 0;
+  return lit->index;
 }
 
 //returns the positive literal of a variable
 Lit* sat_pos_literal(const Var* var) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return var->p_literal;
 }
 
 //returns the negative literal of a variable
 Lit* sat_neg_literal(const Var* var) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return var->n_literal;
 }
 
 //returns 1 if the literal is implied, 0 otherwise
@@ -134,36 +140,40 @@ void sat_undo_decide_literal(SatState* sat_state) {
  * Clauses 
  ******************************************************************************/
 
+
+Clause* new_clause(c2dSize index, c2dSize clause_size, Lit **buf_lit) {
+  Clause* new_c = malloc(sizeof(Clause));
+  new_c->index = index;
+  new_c->size = clause_size;
+  new_c->literals = malloc(sizeof(Lit*) * clause_size);
+  for (c2dSize i = 0; i < clause_size; i++) {
+    new_c->literals[i] = buf_lit[i];
+  }
+  return new_c;
+}
+
 //returns a clause structure for the corresponding index
 Clause* sat_index2clause(c2dSize index, const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  if (index <= sat_state->num_cnf_clauses) {
+    return sat_state->cnf_clauses[index];
+  } else {
+    return sat_state->learned_clauses[index - sat_state->num_cnf_clauses];
+  }
 }
 
 //returns the index of a clause
 c2dSize sat_clause_index(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return clause->index;
 }
 
 //returns the literals of a clause
 Lit** sat_clause_literals(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return clause->literals;
 }
 
 //returns the number of literals in a clause
 c2dSize sat_clause_size(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return clause->size; 
 }
 
 //returns 1 if the clause is subsumed, 0 otherwise
@@ -176,18 +186,12 @@ BOOLEAN sat_subsumed_clause(const Clause* clause) {
 
 //returns the number of clauses in the cnf of sat state
 c2dSize sat_clause_count(const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return sat_state->num_cnf_clauses;
 }
 
 //returns the number of learned clauses in a sat state (0 when the sat state is constructed)
 c2dSize sat_learned_clause_count(const SatState* sat_state) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return sat_state->num_learned_clauses;
 }
 
 //adds clause to the set of learned clauses, and runs unit resolution
@@ -222,17 +226,84 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
  * SatState (sat_state_free)
  ******************************************************************************/
 
+char* skip_a_string(char *p) {
+  while (*p && *p == ' ') ++p;
+  while (*p && *p != ' ') ++p;
+  return p;
+}
+
+char* read_a_interger(char *p, c2dLiteral *num) {
+  while (*p && *p == ' ') ++p;
+
+  c2dLiteral ret = 0, sign = 1;
+  if (*p == '-') sign = -1, ++p;
+  while ('0' <= *p && *p <= '9') {
+    ret = ret * 10 + ((*p) - '0');
+    ++p;
+  }
+  *num = sign * ret;
+  return p;
+}
+
+
+void sat_state_debug(SatState* sat_state) {
+  printf("%lu %lu\n", sat_state->num_vars, sat_state->num_cnf_clauses);
+  for (c2dSize i = 1; i <= sat_state->num_cnf_clauses; i++) {
+    printf("Clause %lu: \n", sat_state->cnf_clauses[i]->index);
+    for (c2dSize j = 0; j < sat_state->cnf_clauses[i]->size; j++) {
+      printf("%ld ", sat_state->cnf_clauses[i]->literals[j]->index);
+    }
+    printf("\n");
+  }
+}
+
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name) {
+  SatState* state = malloc(sizeof(SatState));
+  c2dLiteral tmp_num;
 
-  // FILE *file = fopen(file_name, "r")
+  FILE *file = fopen(file_name, "r");
+  char *line = (char*)malloc(BUF_LEN * sizeof(char));
 
-  // SatState* state = malloc(sizeof(SatState));
+  Lit **buf_literals;
+  c2dSize cur_clause_index = 0;
+  while (fgets(line, BUF_LEN, file)) {
+    if (line[0] == 'c' || line[0] == '%' || line[0] == '0') continue;
+    if (line[0] == 'p') {
+      line = skip_a_string(skip_a_string(line));
+      line = read_a_interger(line, &tmp_num);
+      state->num_vars = (c2dSize)tmp_num;
+      line = read_a_interger(line, &tmp_num);
+      state->num_cnf_clauses = (c2dSize)tmp_num;
+      state->variables = malloc(sizeof(Var*) * (state->num_vars+1));
+      state->p_literals = malloc(sizeof(Lit*) * (state->num_vars+1));
+      state->n_literals = malloc(sizeof(Lit*) * (state->num_vars+1));
+      for (c2dSize i = 1; i <= state->num_vars; i++) {
+        state->variables[i] = new_variable(i);
+        state->variables[i]->p_literal = state->p_literals[i] = new_literal((c2dLiteral)i, state->variables[i]);
+        state->variables[i]->n_literal = state->n_literals[i] = new_literal(-((c2dLiteral)i), state->variables[i]);
+      }
+      state->cnf_clauses = malloc(sizeof(Clause*) * state->num_cnf_clauses);
+      buf_literals = malloc(2 * state->num_vars * sizeof(Lit*));
+    } else {
+      c2dSize clause_size = 0;
+      while ((line = read_a_interger(line, &tmp_num))) {
+        if (tmp_num == 0) break;
+        if (tmp_num > 0) {
+          buf_literals[clause_size++] = state->p_literals[tmp_num];
+        } else {
+          buf_literals[clause_size++] = state->n_literals[-tmp_num];
+        }
+      }
+      ++cur_clause_index;
+      state->cnf_clauses[cur_clause_index] = new_clause(cur_clause_index, clause_size, buf_literals);
+    }
+  }
+  fclose(file);
 
-  // fclose(file);
-  printf("gcc test.c -std=c99 -O2 -Wall -Iinclude -Llib -lsat -o test\n");
+  state->cur_level = 0;
 
-  return NULL; //dummy valued
+  return state;
 }
 
 //frees the SatState

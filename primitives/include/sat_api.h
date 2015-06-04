@@ -32,6 +32,8 @@
  * typedefs
  ******************************************************************************/
 
+#define BUF_LEN 32768
+
 typedef char BOOLEAN; //signed
 
 typedef unsigned long c2dSize;  //for variables, clauses, and various things
@@ -50,10 +52,19 @@ typedef double c2dWmc;          //for (weighted) model count
  * --The field "mark" below and its related functions should not be changed
  ******************************************************************************/
 
+typedef struct literal Lit;
+typedef struct clause Clause;
+
 typedef struct var {
   //c2dSize index; variable index (you can change the variable name as you wish)
   c2dSize index;
 
+  c2dSize num_clauses; // number of clauses mentioning a variable
+  Clause** clauses; // clauses mentioning a variable, index starts from 0
+
+  Lit* p_literal;
+  Lit* n_literal;
+  
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 } Var;
 
@@ -65,13 +76,13 @@ typedef struct var {
  * --Index of a literal must be of type "c2dLiteral"
  ******************************************************************************/
 
-typedef struct literal {
+struct literal {
   //c2dLiteral index; literal index (you can change the variable name as you wish)
   c2dLiteral index;
   c2dLiteral decision_level;
 
   Var* var;
-} Lit;
+};
 
 /******************************************************************************
  * Clauses: 
@@ -83,19 +94,19 @@ typedef struct literal {
  * --The field "mark" below and its related functions should not be changed
  ******************************************************************************/
 
-typedef struct clause {
+struct clause {
   //c2dSize index;  clause index   (you can change the variable name as you wish)
   c2dSize index;
 
   //Lit** literals; literal array  (you can change the variable name as you wish)
-  Lit** literals;
+  Lit** literals; // start from 0
 
   // size of literals
   c2dSize size;
 
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-} Clause;
+};
 
 /******************************************************************************
  * SatState: 
@@ -105,7 +116,17 @@ typedef struct clause {
 
 typedef struct sat_state_t {
   c2dSize num_vars;
-  c2dSize num_clauses;
+
+
+  Var** variables;  // variables variabels, start from 1
+  Lit** p_literals; // positive literals, start from 1
+  Lit** n_literals; // negtive literals, start from 1
+
+  c2dSize num_cnf_clauses;
+  Clause** cnf_clauses; // start from 1
+
+  c2dSize num_learned_clauses;
+  Clause** learned_clauses; // start from 1
 
   c2dSize cur_level;
 
@@ -219,6 +240,8 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state);
 /******************************************************************************
  * SatState
  ******************************************************************************/
+
+void sat_state_debug(SatState* sat_state);
 
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name);

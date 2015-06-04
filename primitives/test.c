@@ -1,8 +1,8 @@
 #include "sat_api.h"
 
 void TEST_READ_FILE() {
-  printf("CAO\n");
-  sat_state_new("cnf.in");
+  SatState* st = sat_state_new("cnf.in");
+  sat_state_debug(st);
 }
 
 int main() {
