@@ -89,6 +89,10 @@ struct literal {
   Clause* decision_clause;
   Lit* op_lit;
   Var* var;
+
+  c2dSize num_clauses; // number of clauses mentioning a variable
+  c2dSize dyn_cap;
+  Clause** clauses; // clauses mentioning a variable, index starts from 0. It's dynamic.
 };
 
 /******************************************************************************
@@ -101,14 +105,20 @@ struct literal {
  * --The field "mark" below and its related functions should not be changed
  ******************************************************************************/
 
+#define UNIT_RESOLUTION_AFTER_DECIDING_LITERAL 2
+#define UNIT_RESOLUTION_AFTER_ASSERTING_CLAUSE 1
+#define UNIT_RESOLUTION_FIRST_TIME 0 
+
 struct clause {
-  //c2dSize index;  clause index   (you can change the variable name as you wish)
-  c2dSize index;
+  c2dSize index;  
 
-  Lit** literals; // start from 0
-  c2dSize size; // size of literals
+  Lit** literals; // starts from 0
+  c2dSize size;   // size of literals
 
-  c2dLiteral assertion_level;
+  c2dLiteral assertion_level;  // 
+  
+  c2dSize decision_level; // the maximum assertion level over all its literals
+  c2dSize num_false;      // the number of literals
 
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 };
@@ -140,9 +150,9 @@ typedef struct sat_state_t {
   Lit** implied_literals;
   c2dSize num_implied_literals;
   
-  Lit** tmp_lit_list;
-  
   Clause* asserted_clause;
+
+  c2dSize unit_resolution_s;
   
 } SatState;
 

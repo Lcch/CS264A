@@ -31,9 +31,7 @@ Clause* sat_aux(SatState* sat_state) {
   printf("SELECT: %lu %lu\n", lit->index, sat_state->num_decided_literals);
   Clause* learned = sat_decide_literal(lit,sat_state);
   if(learned==NULL) learned = sat_aux(sat_state);
-  else {
-    sat_clause_debug(learned);
-  }
+
   printf("Hi\n");
   sat_undo_decide_literal(sat_state);
   printf("UNDO OVER %lu\n", sat_state->cur_level);
@@ -63,16 +61,19 @@ void TEST_READ_FILE(SatState* st) {
   // sat_state_debug(st);
   // printf("sat_unit_resolution: %d\n", (int)sat_unit_resolution(st));
   sat_state_debug(st);
+  printf("CAO\n");
 }
 
 int main(int argc, char* argv[]) {  
   //construct a sat state and then check satisfiability
   SatState* sat_state = sat_state_new("cnf.in1");
-  TEST_READ_FILE(sat_state);
-  /*
+  
+  printf("CAO\n");
+  // TEST_READ_FILE(sat_state);
+  
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
   sat_state_free(sat_state);
-  */
+  
   return 0;
 }
