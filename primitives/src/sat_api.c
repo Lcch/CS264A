@@ -42,27 +42,32 @@ Var* new_variable(c2dSize index) {
   new_v->clauses = malloc(sizeof(Clause*) * new_v->dyn_cap);
   new_v->p_literal = NULL;
   new_v->n_literal = NULL;
+  new_v->mark = 0;
   return new_v;
 }
 
 //returns a variable structure for the corresponding index
 Var* sat_index2var(c2dSize index, const SatState* sat_state) {
+  // printf("sat_index2var %lu\n", index);
   return sat_state->variables[index];
 }
 
 //returns the index of a variable
 c2dSize sat_var_index(const Var* var) {
+  // printf("sat_var_index\n");
   return var->index;
 }
 
 //returns the variable of a literal
 Var* sat_literal_var(const Lit* lit) {
+  // printf("sat_literal_var\n");
   return lit->var;
 }
 
 //returns 1 if the variable is instantiated, 0 otherwise
 //a variable is instantiated either by decision or implication (by unit resolution)
 BOOLEAN sat_instantiated_var(const Var* var) {
+  // printf("sat_instantiated_var\n");
   return sat_implied_literal(var->p_literal) | sat_implied_literal(var->n_literal);
 }
 
@@ -77,12 +82,14 @@ BOOLEAN sat_irrelevant_var(const Var* var) {
 
 //returns the number of variables in the cnf of sat state
 c2dSize sat_var_count(const SatState* sat_state) {
+  // printf("sat_var_count\n");
   return sat_state->num_vars;
 }
 
 //returns the number of clauses mentioning a variable
 //a variable is mentioned by a clause if one of its literals appears in the clause
 c2dSize sat_var_occurences(const Var* var) {
+  // printf("sat_var_occurences\n");
   return var->num_clauses;
 }
 
@@ -90,6 +97,7 @@ c2dSize sat_var_occurences(const Var* var) {
 //index starts from 0, and is less than the number of clauses mentioning the variable
 //this cannot be called on a variable that is not mentioned by any clause
 Clause* sat_clause_of_var(c2dSize index, const Var* var) {
+  // printf("sat_clause_of_var, %lu\n", index);
   return var->clauses[index];
 }
 
@@ -116,6 +124,7 @@ Lit* new_literal(c2dLiteral index, Var* var) {
 
 //returns a literal structure for the corresponding index
 Lit* sat_index2literal(c2dLiteral index, const SatState* sat_state) {
+  // printf("sat_index2literal\n");
   if (index > 0) {
     return sat_state->p_literals[index];
   } else {
@@ -151,10 +160,16 @@ BOOLEAN sat_implied_literal(const Lit* lit) {
 //to L+1 so that the decision level of lit and all other literals implied by unit resolution is L+1
 Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   lit->decision_level = ++sat_state->cur_level;
+  lit->decision_clause = NULL;
   sat_state->decided_literals[sat_state->num_decided_literals++] = lit;
 
-  if (sat_unit_resolution(sat_state))
+  // printf("GO INTO SB\n");
+  if (sat_unit_resolution(sat_state)) {
     sat_state->asserted_clause = NULL;
+    // printf("WSM IS SB!\n");
+  } else {
+    // printf("WSM IS BIG SB!\n");
+  }
 
   return sat_state->asserted_clause;
 }
@@ -165,8 +180,11 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 //to L-1 before the call ends
 void sat_undo_decide_literal(SatState* sat_state) {
   c2dSize sz = sat_state->num_decided_literals;
-  while (sz > 0 && sat_state->decided_literals[sz - 1]->decision_level == sat_state->cur_level)
+  while (sz > 0 && sat_state->decided_literals[sz - 1]->decision_level == sat_state->cur_level) {
+    sat_state->decided_literals[sz - 1]->decision_level = 0;
+    sat_state->decided_literals[sz - 1]->decision_clause = NULL;
     --sz;
+  }
   sat_state->num_decided_literals = sz;
 
   sat_undo_unit_resolution(sat_state);
@@ -186,15 +204,17 @@ Clause* new_clause(c2dSize index, c2dSize clause_size, Lit **buf_lit) {
     new_c->literals[i] = buf_lit[i];
   }
   new_c->assertion_level = 0;
+  new_c->mark = 0;
   return new_c;
 }
 
 //returns a clause structure for the corresponding index
 Clause* sat_index2clause(c2dSize index, const SatState* sat_state) {
+  // printf("sat_index2clause\n");
   if (index <= sat_state->num_cnf_clauses) {
     return sat_state->cnf_clauses[index];
   } else {
-    return sat_state->learned_clauses[index - sat_state->num_cnf_clauses];
+    return sat_state->learned_clauses[index - sat_state->num_cnf_clauses - 1];
   }
 }
 
@@ -205,11 +225,13 @@ c2dSize sat_clause_index(const Clause* clause) {
 
 //returns the literals of a clause
 Lit** sat_clause_literals(const Clause* clause) {
+  // printf("sat_clause_literals\n");
   return clause->literals;
 }
 
 //returns the number of literals in a clause
 c2dSize sat_clause_size(const Clause* clause) {
+  // printf("sat_clause_size\n");
   return clause->size; 
 }
 
@@ -225,6 +247,7 @@ BOOLEAN sat_subsumed_clause(const Clause* clause) {
 
 //returns the number of clauses in the cnf of sat state
 c2dSize sat_clause_count(const SatState* sat_state) {
+  // printf("sat_clause_count\n");
   return sat_state->num_cnf_clauses;
 }
 
@@ -332,6 +355,7 @@ void sat_state_debug(SatState* sat_state) {
 
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name) {
+  printf("sat_state_new\n");
   SatState* state = malloc(sizeof(SatState));
   c2dLiteral tmp_num;
 
@@ -465,6 +489,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 
   c2dSize f = 0, r = 0;
   
+
   if (sat_state->num_decided_literals > 0) {
     sat_state->tmp_lit_list[++r] = sat_state->decided_literals[sat_state->num_decided_literals-1];
   }
@@ -480,6 +505,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   for (c2dSize i = 1; i <= sat_state->num_cnf_clauses + sat_state->num_learned_clauses; i++) {
     Clause* clause = sat_index2clause(i, sat_state);
     tmp_value = check_clause(clause, &ret_lit);
+    // printf("%lu(%ld)", i, tmp_value);
     if (tmp_value == -1) {
       conflict_clause = clause;
     }
@@ -491,9 +517,9 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     }
   }
 
-  printf("WSM DASHABI\n");
+  // printf("\nWSM DASHABI\n");
   if (conflict_clause == NULL) {
-    printf("YOYOYO\n");
+    // printf("YOYOYO\n");
     while (f < r) {
       var = sat_literal_var(sat_state->tmp_lit_list[++f]);
       for (c2dSize i = 0; i < var->num_clauses; i++) {
@@ -517,8 +543,8 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     return 1;
   }
 
-  printf("WOCAONIMA\n");
-  sat_clause_debug(conflict_clause);
+  // printf("WOCAONIMA\n");
+  // sat_clause_debug(conflict_clause);
 
   // Asserted Clause: 
   BOOLEAN* seen = malloc(sizeof(BOOLEAN) * (sat_state->num_vars+1));
@@ -535,11 +561,13 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     }
   }
 
+  /*
   printf("R: %lu\n", r);
   for (int i = 1; i <= r; i++) {
-    printf("%ld ", sat_state->tmp_lit_list[i]->index);
+    printf("%ld(%lu) ", sat_state->tmp_lit_list[i]->index, sat_state->tmp_lit_list[i]->decision_level);
   }
   printf("\n");
+  */
 
   while (f < r) {
     Lit* lit = sat_state->tmp_lit_list[++f];
@@ -559,14 +587,15 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   sat_state->asserted_clause = new_clause(0, lit_list_sz, lit_list);
   c2dSize assertion_level = 1;
   for (c2dSize i = 0; i < sat_state->asserted_clause->size; i++) {
-    c2dSize dl = sat_state->asserted_clause->literals[i]->decision_level;
-    if (dl < sat_state->cur_level || dl > assertion_level) {
+    c2dSize dl = sat_state->asserted_clause->literals[i]->op_lit->decision_level;
+    if (dl < sat_state->cur_level && dl > assertion_level) {
       assertion_level = dl;
     }
   }
   sat_state->asserted_clause->assertion_level = assertion_level;
 
-  sat_clause_debug(sat_state->asserted_clause);
+  // sat_clause_debug(sat_state->asserted_clause);
+  // printf("AS_LEVEL: %lu\n", assertion_level);
   return 0;
 }
 
@@ -574,7 +603,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 //after sat_unit_resolution()
 void sat_undo_unit_resolution(SatState* sat_state) {
   c2dSize sz = sat_state->num_implied_literals;
-  while (sz > 0 && sat_state->implied_literals[sz - 1]->decision_level == sat_state->cur_level) {
+  while (sz > 0 && sat_state->implied_literals[sz - 1]->decision_level >= sat_state->cur_level) {
     sat_state->implied_literals[sz - 1]->decision_level = 0;
     sat_state->implied_literals[sz - 1]->decision_clause = NULL;
     --sz;

@@ -28,16 +28,22 @@ Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
   if(lit==NULL) return NULL; //all literals are implied
 
-  printf("SELECT: %lu\n", lit->index);
-
+  printf("SELECT: %lu %lu\n", lit->index, sat_state->num_decided_literals);
   Clause* learned = sat_decide_literal(lit,sat_state);
   if(learned==NULL) learned = sat_aux(sat_state);
-
+  else {
+    sat_clause_debug(learned);
+  }
+  printf("Hi\n");
   sat_undo_decide_literal(sat_state);
+  printf("UNDO OVER %lu\n", sat_state->cur_level);
 
   if(learned!=NULL) { //there is a conflict
     if(sat_at_assertion_level(learned,sat_state)) {
+      printf("WOW welcome\n");
       learned = sat_assert_clause(learned,sat_state);
+
+      printf("WOW welcome welcome\n");
       if(learned==NULL) return sat_aux(sat_state); //try again
       else return learned; //new clause learned, backtrack
     }
@@ -56,17 +62,17 @@ BOOLEAN sat(SatState* sat_state) {
 void TEST_READ_FILE(SatState* st) {
   // sat_state_debug(st);
   // printf("sat_unit_resolution: %d\n", (int)sat_unit_resolution(st));
-  st->decided_literals[0] = (Lit*)(1234);
   sat_state_debug(st);
 }
 
 int main(int argc, char* argv[]) {  
   //construct a sat state and then check satisfiability
   SatState* sat_state = sat_state_new("cnf.in1");
-  // TEST_READ_FILE(sat_state);
+  TEST_READ_FILE(sat_state);
+  /*
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
   sat_state_free(sat_state);
-
+  */
   return 0;
 }
