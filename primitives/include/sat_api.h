@@ -55,16 +55,21 @@ typedef double c2dWmc;          //for (weighted) model count
 typedef struct literal Lit;
 typedef struct clause Clause;
 
+void clause_pointer_double_capacity(c2dSize* cap, Clause*** dyn_clauses);
+void clause_pointer_push(Clause* new_cp, Clause*** dyn_clauses, c2dSize* sz, c2dSize* cap);
+void clause_pointer_pop(Clause** dyn_clauses, c2dSize* sz);
+
 typedef struct var {
   //c2dSize index; variable index (you can change the variable name as you wish)
   c2dSize index;
 
   c2dSize num_clauses; // number of clauses mentioning a variable
-  Clause** clauses; // clauses mentioning a variable, index starts from 0
+  c2dSize dyn_cap;
+  Clause** clauses; // clauses mentioning a variable, index starts from 0. It's dynamic.
 
   Lit* p_literal;
   Lit* n_literal;
-  
+
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 } Var;
 
@@ -81,6 +86,8 @@ struct literal {
   c2dLiteral index;
   c2dLiteral decision_level;
 
+  Clause* decision_clause;
+  Lit* op_lit;
   Var* var;
 };
 
@@ -98,14 +105,12 @@ struct clause {
   //c2dSize index;  clause index   (you can change the variable name as you wish)
   c2dSize index;
 
-  //Lit** literals; literal array  (you can change the variable name as you wish)
   Lit** literals; // start from 0
+  c2dSize size; // size of literals
 
-  // size of literals
-  c2dSize size;
+  c2dLiteral assertion_level;
 
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
-
 };
 
 /******************************************************************************
@@ -117,7 +122,6 @@ struct clause {
 typedef struct sat_state_t {
   c2dSize num_vars;
 
-
   Var** variables;  // variables variabels, start from 1
   Lit** p_literals; // positive literals, start from 1
   Lit** n_literals; // negtive literals, start from 1
@@ -126,10 +130,20 @@ typedef struct sat_state_t {
   Clause** cnf_clauses; // start from 1
 
   c2dSize num_learned_clauses;
-  Clause** learned_clauses; // start from 1
+  c2dSize dyn_cap;
+  Clause** learned_clauses; // start from 1. it's dynamic
 
   c2dSize cur_level;
 
+  Lit** decided_literals;
+  c2dSize num_decided_literals;
+  Lit** implied_literals;
+  c2dSize num_implied_literals;
+  
+  Lit** tmp_lit_list;
+  
+  Clause* asserted_clause;
+  
 } SatState;
 
 /******************************************************************************
@@ -196,7 +210,6 @@ Lit* sat_neg_literal(const Var* var);
 //returns 1 if the literal is implied, 0 otherwise
 //a literal is implied by deciding its variable, or by inference using unit resolution
 BOOLEAN sat_implied_literal(const Lit* lit);
-
 
 //sets the literal to true, and then runs unit resolution
 //returns a learned clause if unit resolution detected a contradiction, NULL otherwise
