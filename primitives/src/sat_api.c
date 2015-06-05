@@ -153,8 +153,9 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   lit->decision_level = ++sat_state->cur_level;
   sat_state->decided_literals[sat_state->num_decided_literals++] = lit;
 
-  if (!sat_unit_resolution(sat_state)) 
+  if (sat_unit_resolution(sat_state))
     sat_state->asserted_clause = NULL;
+
   return sat_state->asserted_clause;
 }
 
@@ -243,7 +244,7 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
   clause->index = sat_state->num_cnf_clauses + sat_state->num_learned_clauses;
   push_clause_to_vars(clause);
 
-  if (!sat_unit_resolution(sat_state)) 
+  if (sat_unit_resolution(sat_state)) 
     sat_state->asserted_clause = NULL;
 
   return sat_state->asserted_clause;
@@ -288,10 +289,18 @@ char* read_a_interger(char *p, c2dLiteral *num) {
   return p;
 }
 
+void sat_clause_debug(Clause* clause) {
+  printf("Clause: %lu %lu\n", clause->index, clause->size);
+  for (c2dSize i = 0; i < clause->size; i++) {
+    printf("%ld ", clause->literals[i]->index);
+  }
+  printf("\n");
+}
+
 void sat_state_debug(SatState* sat_state) {
   printf("%lu %lu\n", sat_state->num_vars, sat_state->num_cnf_clauses);
   for (c2dSize i = 1; i <= sat_state->num_cnf_clauses; i++) {
-    printf("Clause %lu: \n", sat_state->cnf_clauses[i]->index);
+    printf("Clause %lu: %lu\n", sat_state->cnf_clauses[i]->index, sat_state->cnf_clauses[i]->size);
     for (c2dSize j = 0; j < sat_state->cnf_clauses[i]->size; j++) {
       printf("%ld ", sat_state->cnf_clauses[i]->literals[j]->index);
     }
@@ -350,8 +359,8 @@ SatState* sat_state_new(const char* file_name) {
         state->p_literals[i]->op_lit = state->n_literals[i];
         state->n_literals[i]->op_lit = state->p_literals[i]; 
       }
-      state->cnf_clauses = malloc(sizeof(Clause*) * state->num_cnf_clauses);
-      buf_literals = malloc(2 * state->num_vars * sizeof(Lit*));
+      state->cnf_clauses = malloc(sizeof(Clause*) * (state->num_cnf_clauses + 1));
+      buf_literals = malloc(sizeof(Lit*) * 2 * state->num_vars);
     } else {
       c2dSize clause_size = 0;
       while ((line = read_a_interger(line, &tmp_num))) {
@@ -379,9 +388,9 @@ SatState* sat_state_new(const char* file_name) {
   state->learned_clauses = malloc(sizeof(Clause*) * state->dyn_cap);
   
   state->num_decided_literals = 0;
-  state->decided_literals = malloc(sizeof(Lit*) * state->num_vars * 2);
+  state->decided_literals = malloc(state->num_vars * 2 * sizeof(Lit*));
   state->num_implied_literals = 0;
-  state->implied_literals = malloc(sizeof(Lit*) * state->num_vars * 2);
+  state->implied_literals = malloc(state->num_vars * 2 * sizeof(Lit*));
 
   state->tmp_lit_list = malloc(sizeof(Lit*) * state->num_vars * 2);
   
@@ -471,7 +480,9 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   for (c2dSize i = 1; i <= sat_state->num_cnf_clauses + sat_state->num_learned_clauses; i++) {
     Clause* clause = sat_index2clause(i, sat_state);
     tmp_value = check_clause(clause, &ret_lit);
-    if (tmp_value == -1) conflict_clause = clause;
+    if (tmp_value == -1) {
+      conflict_clause = clause;
+    }
     if (tmp_value == 2) {
       ret_lit->decision_level = sat_state->cur_level;
       ret_lit->decision_clause = clause;
@@ -480,7 +491,9 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     }
   }
 
-  if (!conflict_clause) {
+  printf("WSM DASHABI\n");
+  if (conflict_clause == NULL) {
+    printf("YOYOYO\n");
     while (f < r) {
       var = sat_literal_var(sat_state->tmp_lit_list[++f]);
       for (c2dSize i = 0; i < var->num_clauses; i++) {
@@ -499,10 +512,13 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     }
   }
 
-  if (!conflict_clause) {
+  if (conflict_clause == NULL) {
     sat_state->asserted_clause = NULL;
     return 1;
   }
+
+  printf("WOCAONIMA\n");
+  sat_clause_debug(conflict_clause);
 
   // Asserted Clause: 
   BOOLEAN* seen = malloc(sizeof(BOOLEAN) * (sat_state->num_vars+1));
@@ -514,19 +530,26 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   f = 0, r = 0;
   for (c2dSize i = 0; i < conflict_clause->size; i++) {
     if (!seen[conflict_clause->literals[i]->var->index]) {
-      sat_state->tmp_lit_list[++r] = conflict_clause->literals[i];
+      sat_state->tmp_lit_list[++r] = conflict_clause->literals[i]->op_lit;
       seen[conflict_clause->literals[i]->var->index] = 1;
     }
   }
+
+  printf("R: %lu\n", r);
+  for (int i = 1; i <= r; i++) {
+    printf("%ld ", sat_state->tmp_lit_list[i]->index);
+  }
+  printf("\n");
+
   while (f < r) {
     Lit* lit = sat_state->tmp_lit_list[++f];
     if (lit->decision_level < sat_state->cur_level ||
         lit->decision_clause == NULL) {
-      lit_list[lit_list_sz++] = lit;
+      lit_list[lit_list_sz++] = lit->op_lit;
     } else {
       for (c2dSize i = 0; i < lit->decision_clause->size; i++) {
         if (!seen[lit->decision_clause->literals[i]->var->index]) {
-          sat_state->tmp_lit_list[++r] = lit->decision_clause->literals[i];
+          sat_state->tmp_lit_list[++r] = lit->decision_clause->literals[i]->op_lit;
           seen[lit->decision_clause->literals[i]->var->index] = 1;
         }
       }
@@ -543,6 +566,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   }
   sat_state->asserted_clause->assertion_level = assertion_level;
 
+  sat_clause_debug(sat_state->asserted_clause);
   return 0;
 }
 

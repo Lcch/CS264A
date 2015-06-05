@@ -255,6 +255,7 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state);
  ******************************************************************************/
 
 void sat_state_debug(SatState* sat_state);
+void sat_clause_debug(Clause* clause);
 
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name);
