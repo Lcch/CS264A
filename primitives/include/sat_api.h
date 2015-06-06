@@ -154,6 +154,12 @@ typedef struct sat_state_t {
   Clause* asserted_clause;
 
   c2dSize unit_resolution_s;  // Type of unit_resolution
+
+  // Auxiliary 
+  Lit** tmp_lit_list;
+  BOOLEAN* seen;
+  Lit** lit_list;
+
 } SatState;
 
 /******************************************************************************

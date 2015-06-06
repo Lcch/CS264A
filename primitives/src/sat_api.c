@@ -458,6 +458,10 @@ SatState* sat_state_new(const char* file_name) {
   
   state->unit_resolution_s = UNIT_RESOLUTION_FIRST_TIME;
 
+  state->tmp_lit_list = malloc(sizeof(Lit*) * state->num_vars * 2);
+  state->seen = malloc(sizeof(BOOLEAN) * (state->num_vars+1));
+  state->lit_list = malloc(sizeof(Lit*) * state->num_vars * 2);
+
   return state;
 }
 
@@ -484,6 +488,10 @@ void sat_state_free(SatState* sat_state) {
   free(sat_state->learned_clauses);
   free(sat_state->decided_literals);
   free(sat_state->implied_literals);
+  
+  free(sat_state->lit_list);
+  free(sat_state->tmp_lit_list);
+  free(sat_state->seen);
   free(sat_state);
 }
 
@@ -547,7 +555,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   Clause* conflict_clause = NULL;
 
   c2dSize f = 0, r = 0;
-  Lit** tmp_lit_list = malloc(sizeof(Lit*) * sat_state->num_vars * 2);
+  Lit** tmp_lit_list = sat_state->tmp_lit_list;
 
   // Push the new decided literal
   if (sat_state->unit_resolution_s == UNIT_RESOLUTION_AFTER_DECIDING_LITERAL) {
@@ -606,7 +614,6 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   if (conflict_clause == NULL) {
     // No conflict
     sat_state->asserted_clause = NULL;
-    free(tmp_lit_list);
     return 1;
   }
 
@@ -622,9 +629,9 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   //    where Pa(n) are the parents of node n which are set at the same level as n
   //          ePa(n) are the parents of ndoe n set at earlier levels
   // 
-  BOOLEAN* seen = malloc(sizeof(BOOLEAN) * (sat_state->num_vars+1));
+  BOOLEAN* seen = sat_state->seen;
   for (c2dSize i = 1; i <= sat_state->num_vars; i++) seen[i] = 0;
-  Lit** lit_list = malloc(sizeof(Lit*) * sat_state->num_vars * 2);
+  Lit** lit_list = sat_state->lit_list;
   c2dSize lit_list_sz = 0;
 
   f = 0, r = 0;
@@ -657,10 +664,6 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   }
   sat_state->asserted_clause = new_clause(0, lit_list_sz, lit_list);
   sat_state->asserted_clause->assertion_level = assertion_level;
-  
-  free(tmp_lit_list);
-  free(lit_list);
-  free(seen);
 
   return 0;
 }
