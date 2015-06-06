@@ -131,7 +131,7 @@ BOOLEAN sat_instantiated_var(const Var* var) {
 
 //returns 1 if all the clauses mentioning the variable are subsumed, 0 otherwise
 BOOLEAN sat_irrelevant_var(const Var* var) {
-  for (c2dSize i = 0; i < var->num_clauses; i++) {
+  for (c2dSize i = 0; i < sat_var_occurences(var); i++) {
     if (!sat_subsumed_clause(var->clauses[i]))
       return 0;
   }
@@ -146,7 +146,7 @@ c2dSize sat_var_count(const SatState* sat_state) {
 //returns the number of clauses mentioning a variable
 //a variable is mentioned by a clause if one of its literals appears in the clause
 c2dSize sat_var_occurences(const Var* var) {
-  return var->num_clauses;
+  return var->num_cnf_clauses;
 }
 
 //returns the index^th clause that mentions a variable
@@ -371,13 +371,13 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
  ******************************************************************************/
 
 char* skip_a_string(char *p) {
-  while (*p && *p == ' ') ++p;
-  while (*p && *p != ' ') ++p;
+  while (*p && (*p == ' ' || *p == (char)(9))) ++p;
+  while (*p && *p != ' ' && *p != (char)(9)) ++p;
   return p;
 }
 
 char* read_an_interger(char *p, c2dLiteral *num) {
-  while (*p && *p == ' ') ++p;
+  while (*p && (*p == ' ' || *p == (char)(9))) ++p;
   c2dLiteral ret = 0, sign = 1;
   if (*p == '-') sign = -1, ++p;
   while ('0' <= *p && *p <= '9') {
@@ -400,6 +400,7 @@ SatState* sat_state_new(const char* file_name) {
   Lit **buf_literals;
   c2dSize cur_clause_index = 0;
   while (fgets(line, BUF_LEN, file)) {
+    if (strlen(line) < 2) continue;
     if (line[0] == 'c' || line[0] == '%' || line[0] == '0') continue;
     if (line[0] == 'p') {
       line = skip_a_string(skip_a_string(line));
@@ -429,10 +430,12 @@ SatState* sat_state_new(const char* file_name) {
           buf_literals[clause_size++] = state->n_literals[-tmp_num];
         }
       }
-      ++cur_clause_index;
-      state->cnf_clauses[cur_clause_index] = new_clause(cur_clause_index, clause_size, buf_literals);
-      push_clause_to_vars(state->cnf_clauses[cur_clause_index]);
-      if (cur_clause_index == state->num_cnf_clauses) break;
+      if (clause_size > 0) {
+        ++cur_clause_index;
+        state->cnf_clauses[cur_clause_index] = new_clause(cur_clause_index, clause_size, buf_literals);
+        push_clause_to_vars(state->cnf_clauses[cur_clause_index]);
+        if (cur_clause_index == state->num_cnf_clauses) break;
+      }
     }
     line = line_start_p;
   }
@@ -440,6 +443,9 @@ SatState* sat_state_new(const char* file_name) {
   free(line_start_p);
   free(buf_literals);
 
+  for (c2dSize i = 1; i <= state->num_vars; i++) {
+    state->variables[i]->num_cnf_clauses = state->variables[i]->num_clauses;
+  }
   state->cur_level = 1;
   state->dyn_cap = 2;
   state->num_learned_clauses = 0;
@@ -457,6 +463,20 @@ SatState* sat_state_new(const char* file_name) {
 
 //frees the SatState
 void sat_state_free(SatState* sat_state) {
+  for (c2dSize i = 1; i <= sat_state->num_vars; i++) {
+    free(sat_state->variables[i]->clauses);
+    free(sat_state->variables[i]);
+    free(sat_state->p_literals[i]->clauses);
+    free(sat_state->p_literals[i]);
+    free(sat_state->n_literals[i]->clauses);  
+    free(sat_state->n_literals[i]);
+  }
+  for (c2dSize i = 1; i <= sat_state->num_cnf_clauses; i++) {
+    free(sat_state->cnf_clauses[i]->literals);
+  }
+  for (c2dSize i = 0; i < sat_state->num_learned_clauses; i++) {
+    free(sat_state->learned_clauses[i]->literals);
+  }
   free(sat_state->variables);
   free(sat_state->p_literals);
   free(sat_state->n_literals);
@@ -586,6 +606,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   if (conflict_clause == NULL) {
     // No conflict
     sat_state->asserted_clause = NULL;
+    free(tmp_lit_list);
     return 1;
   }
 
@@ -636,6 +657,10 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
   }
   sat_state->asserted_clause = new_clause(0, lit_list_sz, lit_list);
   sat_state->asserted_clause->assertion_level = assertion_level;
+  
+  free(tmp_lit_list);
+  free(lit_list);
+  free(seen);
 
   return 0;
 }

@@ -70,10 +70,10 @@ int main(int argc, char* argv[]) {
   
   printf("CAO\n");
   // TEST_READ_FILE(sat_state);
-  
+  /*
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
   sat_state_free(sat_state);
-  
+  */
   return 0;
 }

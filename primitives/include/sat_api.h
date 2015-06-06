@@ -60,15 +60,16 @@ void clause_pointer_push(Clause* new_cp, Clause*** dyn_clauses, c2dSize* sz, c2d
 void clause_pointer_pop(Clause** dyn_clauses, c2dSize* sz);
 
 typedef struct var {
-  //c2dSize index; variable index (you can change the variable name as you wish)
-  c2dSize index;
+  c2dSize index;  // index, starts from 1
 
-  c2dSize num_clauses; // number of clauses mentioning a variable
-  c2dSize dyn_cap;
-  Clause** clauses; // clauses mentioning a variable, index starts from 0. It's dynamic.
+  c2dSize num_cnf_clauses;  // number of cnf_clauses mentioning the var
 
-  Lit* p_literal;
-  Lit* n_literal;
+  c2dSize num_clauses; // number of clauses mentioning the var
+  c2dSize dyn_cap;     // capacity of the clauses list
+  Clause** clauses;    // clauses mentioning the variable, index starts from 0.
+
+  Lit* p_literal;      // positive literal corresponding to the var
+  Lit* n_literal;      // negative literal corresponding to the var
 
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 } Var;
@@ -82,17 +83,17 @@ typedef struct var {
  ******************************************************************************/
 
 struct literal {
-  //c2dLiteral index; literal index (you can change the variable name as you wish)
-  c2dLiteral index;
-  c2dLiteral decision_level;
+  c2dLiteral index;   // pos from 1 to n; neg from -n to -1
 
-  Clause* decision_clause;
-  Lit* op_lit;
+  c2dLiteral decision_level;  
+  Clause* decision_clause;    
+
+  Lit* op_lit;  
   Var* var;
 
-  c2dSize num_clauses; // number of clauses mentioning a variable
+  c2dSize num_clauses; // number of clauses mentioning the literal
   c2dSize dyn_cap;
-  Clause** clauses; // clauses mentioning a variable, index starts from 0. It's dynamic.
+  Clause** clauses; // clauses mentioning the literal, index starts from 0. It's dynamic.
 };
 
 /******************************************************************************
@@ -112,13 +113,13 @@ struct literal {
 struct clause {
   c2dSize index;  
 
-  Lit** literals; // starts from 0
+  Lit** literals; // index starts from 0
   c2dSize size;   // size of literals
-
-  c2dLiteral assertion_level;  // 
   
-  c2dSize decision_level; // the maximum assertion level over all its literals
-  c2dSize num_false;      // the number of literals
+  c2dSize decision_level; // the maximum decision level over all its literals
+  c2dSize num_false;      // the number of literals cannot be satisfied
+
+  c2dLiteral assertion_level; 
 
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 };
@@ -137,23 +138,22 @@ typedef struct sat_state_t {
   Lit** n_literals; // negtive literals, start from 1
 
   c2dSize num_cnf_clauses;
-  Clause** cnf_clauses; // start from 1
+  Clause** cnf_clauses;     // starts from 1
 
   c2dSize num_learned_clauses;
   c2dSize dyn_cap;
-  Clause** learned_clauses; // start from 1. it's dynamic
+  Clause** learned_clauses; // starts from 0. it's dynamic
 
   c2dSize cur_level;
 
-  Lit** decided_literals;
+  Lit** decided_literals;   
   c2dSize num_decided_literals;
-  Lit** implied_literals;
+  Lit** implied_literals;   
   c2dSize num_implied_literals;
   
   Clause* asserted_clause;
 
-  c2dSize unit_resolution_s;
-  
+  c2dSize unit_resolution_s;  // Type of unit_resolution
 } SatState;
 
 /******************************************************************************
